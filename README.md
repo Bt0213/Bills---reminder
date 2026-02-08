@@ -1,2 +1,235 @@
-# Bills---reminder
-Html file for bill reminder app
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bill Reminder</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:20px;background:#f5f5f5}
+.header{background:#fff;padding:20px;border-radius:10px;margin-bottom:20px;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
+h1{color:#333;margin:0 0 10px 0}
+.stats{display:flex;gap:15px;margin:20px 0}
+.stat{flex:1;background:#667eea;color:#fff;padding:15px;border-radius:8px;text-align:center}
+.stat.green{background:#10b981}
+.stat.orange{background:#f59e0b}
+.stat-label{font-size:12px;opacity:0.9}
+.stat-value{font-size:28px;font-weight:bold;margin-top:5px}
+.btn{background:#667eea;color:#fff;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;font-size:14px}
+.btn:hover{background:#5568d3}
+.btn-secondary{background:#ccc;color:#333}
+.btn-secondary:hover{background:#bbb}
+.form{background:#f9f9f9;padding:20px;border-radius:10px;margin-bottom:20px;display:none}
+.form.show{display:block}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:15px}
+.form-group{display:flex;flex-direction:column}
+label{margin-bottom:5px;font-weight:bold;font-size:14px}
+input,select{padding:8px;border:1px solid #ddd;border-radius:5px;font-size:14px}
+.bill{background:#fff;padding:15px;border-radius:8px;margin-bottom:10px;box-shadow:0 2px 5px rgba(0,0,0,0.05);display:flex;justify-content:space-between;align-items:center}
+.bill.paid{opacity:0.6}
+.bill.overdue{border-left:4px solid #ef4444;background:#fef2f2}
+.bill.due-soon{border-left:4px solid #f59e0b;background:#fffbeb}
+.bill-info h3{margin:0 0 8px 0;font-size:18px}
+.bill-info p{margin:0;color:#666;font-size:14px}
+.bill-actions{display:flex;gap:10px}
+.icon-btn{background:none;border:none;cursor:pointer;padding:5px}
+.icon-btn:hover{background:#f0f0f0;border-radius:5px}
+.checkbox{width:20px;height:20px;cursor:pointer}
+.empty{text-align:center;padding:40px;background:#fff;border-radius:10px;color:#999}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}.stats{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>💰 Bill Reminder</h1>
+<p>Track your bills and payments</p>
+
+<div class="stats">
+<div class="stat">
+<div class="stat-label">Total Bills</div>
+<div class="stat-value" id="total">0</div>
+</div>
+<div class="stat green">
+<div class="stat-label">Paid</div>
+<div class="stat-value" id="paid">0</div>
+</div>
+<div class="stat orange">
+<div class="stat-label">Amount Due</div>
+<div class="stat-value" id="due">$0</div>
+</div>
+</div>
+
+<button class="btn" onclick="toggleForm()">+ Add Bill</button>
+</div>
+
+<div id="form" class="form">
+<h3 id="formTitle">Add New Bill</h3>
+<form onsubmit="saveBill(event)">
+<div class="form-row">
+<div class="form-group">
+<label>Bill Name</label>
+<input type="text" id="name" required>
+</div>
+<div class="form-group">
+<label>Amount</label>
+<input type="number" id="amount" step="0.01" required>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Due Date</label>
+<input type="date" id="date" required>
+</div>
+<div class="form-group">
+<label>Category</label>
+<select id="category">
+<option>Utilities</option>
+<option>Rent</option>
+<option>Insurance</option>
+<option>Subscription</option>
+<option>Other</option>
+</select>
+</div>
+</div>
+<button type="submit" class="btn" id="submitBtn">Add Bill</button>
+<button type="button" class="btn btn-secondary" onclick="closeForm()">Cancel</button>
+</form>
+</div>
+
+<div id="list"></div>
+
+<script>
+let bills=JSON.parse(localStorage.getItem('bills')||'[]');
+let editing=null;
+
+function save(){localStorage.setItem('bills',JSON.stringify(bills))}
+
+function toggleForm(){
+document.getElementById('form').classList.toggle('show');
+if(!editing){document.querySelector('form').reset()}
+}
+
+function closeForm(){
+document.getElementById('form').classList.remove('show');
+editing=null;
+document.getElementById('formTitle').textContent='Add New Bill';
+document.getElementById('submitBtn').textContent='Add Bill';
+}
+
+function saveBill(e){
+e.preventDefault();
+const bill={
+id:editing||Date.now(),
+name:document.getElementById('name').value,
+amount:+document.getElementById('amount').value,
+date:document.getElementById('date').value,
+category:document.getElementById('category').value,
+paid:editing?bills.find(b=>b.id===editing).paid:false
+};
+if(editing){
+bills=bills.map(b=>b.id===editing?bill:b);
+}else{
+bills.push(bill);
+}
+save();
+render();
+closeForm();
+}
+
+function deleteBill(id){
+if(confirm('Delete this bill?')){
+bills=bills.filter(b=>b.id!==id);
+save();
+render();
+}
+}
+
+function editBill(id){
+const b=bills.find(x=>x.id===id);
+editing=id;
+document.getElementById('name').value=b.name;
+document.getElementById('amount').value=b.amount;
+document.getElementById('date').value=b.date;
+document.getElementById('category').value=b.category;
+document.getElementById('formTitle').textContent='Edit Bill';
+document.getElementById('submitBtn').textContent='Update';
+document.getElementById('form').classList.add('show');
+}
+
+function togglePaid(id){
+const b=bills.find(x=>x.id===id);
+b.paid=!b.paid;
+save();
+render();
+}
+
+function getDays(d){
+const today=new Date();
+today.setHours(0,0,0,0);
+const due=new Date(d);
+due.setHours(0,0,0,0);
+return Math.ceil((due-today)/(1000*60*60*24));
+}
+
+function getStatus(b){
+if(b.paid)return 'Paid';
+const d=getDays(b.date);
+if(d<0)return `Overdue ${Math.abs(d)}d`;
+if(d===0)return 'Due today';
+if(d===1)return 'Due tomorrow';
+return `Due in ${d}d`;
+}
+
+function getClass(b){
+if(b.paid)return 'paid';
+const d=getDays(b.date);
+if(d<0)return 'overdue';
+if(d<=3)return 'due-soon';
+return '';
+}
+
+function render(){
+const total=bills.length;
+const paidCount=bills.filter(b=>b.paid).length;
+const dueAmount=bills.filter(b=>!b.paid).reduce((s,b)=>s+b.amount,0);
+
+document.getElementById('total').textContent=total;
+document.getElementById('paid').textContent=paidCount;
+document.getElementById('due').textContent='$'+dueAmount.toFixed(2);
+
+const sorted=[...bills].sort((a,b)=>{
+if(a.paid!==b.paid)return a.paid?1:-1;
+return new Date(a.date)-new Date(b.date);
+});
+
+const html=sorted.length?sorted.map(b=>`
+<div class="bill ${getClass(b)}">
+<div style="display:flex;gap:15px;align-items:center">
+<input type="checkbox" class="checkbox" ${b.paid?'checked':''} onclick="togglePaid(${b.id})">
+<div class="bill-info">
+<h3 style="${b.paid?'text-decoration:line-through':''}">
+${b.name}
+</h3>
+<p>
+📅 ${new Date(b.date).toLocaleDateString()} | 
+💵 $${b.amount.toFixed(2)} | 
+📁 ${b.category} | 
+${getStatus(b)}
+</p>
+</div>
+</div>
+<div class="bill-actions">
+<button class="icon-btn" onclick="editBill(${b.id})" title="Edit">✏️</button>
+<button class="icon-btn" onclick="deleteBill(${b.id})" title="Delete">🗑️</button>
+</div>
+</div>
+`).join(''):'<div class="empty"><h2>No bills yet</h2><p>Click "Add Bill" to start</p></div>';
+
+document.getElementById('list').innerHTML=html;
+}
+
+render();
+</script>
+
+</body>
+</html>
